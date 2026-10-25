@@ -1,5 +1,9 @@
 // Traduce los errores de Supabase a mensajes claros en español.
 const MAP: Array<[RegExp, string]> = [
+  [
+    /FunctionsFetchError|FunctionsHttpError|FunctionsRelayError|Failed to send a request to the Edge Function|Edge Function returned|NOT_FOUND|requested function was not found/i,
+    'El servicio del servidor para crear usuarios (Edge Function "admin-create-users") aún no está desplegado. Mientras tanto, la persona puede registrarse sola en la app y tú la apruebas en esta pantalla. Cómo desplegarlo: docs/ESTADO.md, paso 3.',
+  ],
   [/invalid login credentials/i, 'Correo o contraseña incorrectos.'],
   [/email not confirmed/i, 'Primero confirma tu correo: revisa tu bandeja de entrada.'],
   [/user already registered/i, 'Ya existe una cuenta con ese correo. Prueba ingresar.'],
@@ -12,8 +16,14 @@ const MAP: Array<[RegExp, string]> = [
 ]
 
 export function friendlyError(err: unknown, fallback = 'Ocurrió un error. Inténtalo de nuevo.'): string {
+  const e = err as { message?: unknown; name?: unknown; context?: { status?: number } } | null
+  // Los errores de Edge Functions traen el detalle en name/context, no siempre en message.
   const msg =
-    typeof err === 'string' ? err : err && typeof err === 'object' && 'message' in err ? String((err as { message: unknown }).message) : ''
+    typeof err === 'string'
+      ? err
+      : e && typeof e === 'object'
+        ? [e.name, e.message, e.context?.status === 404 ? 'NOT_FOUND' : ''].filter(Boolean).map(String).join(' ')
+        : ''
   if (!msg) return fallback
   for (const [re, text] of MAP) if (re.test(msg)) return text
   // Los mensajes que levantan nuestras funciones SQL ya vienen en español.
