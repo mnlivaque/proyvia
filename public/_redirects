@@ -1,2 +1,0 @@
-# SPA: cualquier ruta que no sea un archivo real la atiende index.html (React Router).
-/*  /index.html  200

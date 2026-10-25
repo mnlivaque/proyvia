@@ -1,5 +1,7 @@
 # Despliegue de Proyvia
 
+> **Estado actual y pendientes:** ver [ESTADO.md](ESTADO.md). Gran parte de lo de abajo ya está hecho.
+
 Pasos para dejar la app en producción en **https://proyvia.livaque.app**. Cada paso dice quién lo hace
 (tú en el navegador, o la terminal). Todo es gratis en los planes básicos de Supabase, Cloudflare, Resend y Sentry.
 
