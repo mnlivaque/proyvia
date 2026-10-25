@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import { useCardsOfUser, useLabels, useLists, useProfiles, useProjects } from '@/data/hooks'
+// Nota: aquí sí se usan todos los proyectos visibles, porque las tareas de OTRA persona
+// pueden estar en proyectos a los que quien mira no pertenece (caso del administrador).
 import type { CardRow } from '@/data/types'
 import { Avatar } from '@/components/ui/Avatar'
 import { DriveIcon } from '@/components/ui/DriveIcon'

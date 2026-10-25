@@ -49,6 +49,29 @@ export function useProjects() {
   })
 }
 
+/**
+ * Proyectos de los que la persona es MIEMBRO. Es lo que se muestra en el inicio,
+ * el selector y Mis tareas, también para administradores: el admin ve todos los
+ * proyectos solo en Administración → Proyectos.
+ */
+export function useMyProjects() {
+  const { user } = useAuth()
+  const projects = useProjects()
+  const memberships = useQuery({
+    // Comparte el prefijo 'memberships' con las consultas de Administración para invalidarse junto a ellas.
+    queryKey: ['memberships', 'mine', user?.id],
+    enabled: !!user,
+    queryFn: async () =>
+      throwIf(await supabase.from('project_members').select('project_id').eq('user_id', user!.id)) as { project_id: string }[],
+  })
+  const ids = new Set((memberships.data ?? []).map((m) => m.project_id))
+  return {
+    ...projects,
+    isLoading: projects.isLoading || memberships.isLoading,
+    data: projects.data?.filter((p) => ids.has(p.id)),
+  }
+}
+
 export function useProject(projectId: string | undefined) {
   return useQuery({
     queryKey: keys.project(projectId ?? ''),

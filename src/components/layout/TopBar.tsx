@@ -4,14 +4,14 @@ import { Bell, ChevronDown, LogOut, Settings, Shield } from 'lucide-react'
 import { useAuth } from '@/auth/AuthProvider'
 import { Logo } from '@/components/ui/Logo'
 import { Avatar } from '@/components/ui/Avatar'
-import { useMarkNotificationsRead, useNotifications, useProjects } from '@/data/hooks'
+import { useMarkNotificationsRead, useMyProjects, useNotifications } from '@/data/hooks'
 import { relativeTime } from '@/lib/dates'
 
 export function TopBar() {
   const { profile, isAdmin, signOut } = useAuth()
   const match = useMatch('/p/:projectId/*')
   const projectId = match?.params.projectId
-  const { data: projects } = useProjects()
+  const { data: projects } = useMyProjects()
   const current = projects?.find((p) => p.id === projectId)
 
   return (
@@ -61,7 +61,7 @@ function Tab({ to, end, children }: { to: string; end?: boolean; children: React
 }
 
 function ProjectPicker({ currentId, currentName, currentColor }: { currentId?: string; currentName?: string; currentColor?: string }) {
-  const { data: projects } = useProjects()
+  const { data: projects } = useMyProjects()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const ref = useClickOutside<HTMLDivElement>(() => setOpen(false))

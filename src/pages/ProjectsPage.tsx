@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { useAuth } from '@/auth/AuthProvider'
-import { useCardsSummary, useLists, useProfileMap, useProjects } from '@/data/hooks'
+import { useCardsSummary, useLists, useMyProjects, useProfileMap } from '@/data/hooks'
 import { keys } from '@/data/keys'
 import { supabase } from '@/lib/supabase'
 import { friendlyError } from '@/lib/errors'
@@ -16,7 +16,7 @@ import { RecentActivity } from '@/components/activity/RecentActivity'
 
 export default function ProjectsPage() {
   const { profile, isAdmin } = useAuth()
-  const { data: projects, isLoading } = useProjects()
+  const { data: projects, isLoading } = useMyProjects()
   const { data: cards } = useCardsSummary()
   const [creating, setCreating] = useState(false)
 
@@ -54,6 +54,16 @@ export default function ProjectsPage() {
         {projects && projects.length === 0 && (
           <div className="panel p-8 text-center text-sm text-muted">
             Aún no perteneces a ningún proyecto. Crea uno o pide a un administrador que te agregue.
+            {isAdmin && (
+              <>
+                {' '}
+                Como administrador puedes ver y unirte a todos en{' '}
+                <Link to="/admin/proyectos" className="font-semibold text-accent">
+                  Administración → Proyectos
+                </Link>
+                .
+              </>
+            )}
           </div>
         )}
 

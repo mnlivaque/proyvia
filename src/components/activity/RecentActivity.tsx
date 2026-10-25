@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { keys } from '@/data/keys'
-import { useProfileMap, useProjects } from '@/data/hooks'
+import { useMyProjects, useProfileMap } from '@/data/hooks'
 import { Avatar } from '@/components/ui/Avatar'
 import { relativeTime } from '@/lib/dates'
 import type { Activity } from '@/types/database'
@@ -10,12 +10,17 @@ import { describeActivity } from './describe'
 
 export function RecentActivity({ limit = 8, projectId }: { limit?: number; projectId?: string }) {
   const { map } = useProfileMap()
-  const { data: projects } = useProjects()
+  const { data: projects } = useMyProjects()
+  const myIds = (projects ?? []).map((p) => p.id)
   const { data, isLoading } = useQuery({
-    queryKey: keys.activity({ limit: String(limit), projectId }),
+    queryKey: keys.activity({ limit: String(limit), projectId, mine: projectId ? undefined : myIds.join(',') }),
+    enabled: !!projectId || projects !== undefined,
     queryFn: async () => {
       let q = supabase.from('activity').select('*').order('created_at', { ascending: false }).limit(limit)
       if (projectId) q = q.eq('project_id', projectId)
+      // En el inicio solo se muestra la actividad de los proyectos propios.
+      else if (myIds.length) q = q.in('project_id', myIds)
+      else return [] as Activity[]
       const { data, error } = await q
       if (error) throw error
       return data as Activity[]
