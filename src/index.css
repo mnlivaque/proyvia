@@ -1,0 +1,102 @@
+@import 'tailwindcss';
+
+/* Tokens de diseño tomados de la maqueta aprobada (Proyvia — Maqueta). */
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --color-ground: #f3f4f6;
+  --color-surface: #ffffff;
+  --color-column: #e9ebef;
+  --color-ink: #1f2937;
+  --color-ink-2: #374151;
+  --color-ink-3: #4b5563;
+  --color-muted: #6b7280;
+  --color-line: #e5e7eb;
+  --color-line-2: #d1d5db;
+
+  --color-accent: #0f766e;
+  --color-accent-dark: #115e59;
+  --color-accent-soft: #ccfbf1;
+  --color-accent-line: #99f6e4;
+  --color-accent-ink: #134e4a;
+
+  --color-danger: #dc2626;
+  --color-danger-ink: #991b1b;
+  --color-danger-text: #b91c1c;
+  --color-danger-soft: #fee2e2;
+
+  --color-warn: #d97706;
+  --color-warn-ink: #78350f;
+  --color-warn-text: #b45309;
+  --color-warn-soft: #fef3c7;
+  --color-warn-bg: #fffbeb;
+
+  --color-ok-ink: #065f46;
+  --color-ok-soft: #d1fae5;
+
+  --radius-card: 10px;
+  --radius-panel: 14px;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    color: var(--color-ink);
+    background: var(--color-ground);
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    margin: 0;
+    min-height: 100dvh;
+  }
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .btn,
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger,
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply bg-accent text-white hover:bg-accent-dark;
+  }
+  .btn-secondary {
+    @apply border border-line-2 bg-surface text-ink-2 hover:bg-ground;
+  }
+  .btn-danger {
+    @apply bg-danger text-white hover:bg-red-700;
+  }
+  .btn-ghost {
+    @apply bg-transparent text-ink-3 hover:bg-ground;
+  }
+  .input {
+    @apply w-full rounded-lg border border-line-2 bg-surface px-3 py-2.5 text-sm text-ink placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent-soft focus:outline-none;
+  }
+  .label {
+    @apply text-[13px] font-semibold text-ink-2;
+  }
+  .panel {
+    @apply rounded-[var(--radius-panel)] border border-line bg-surface;
+  }
+  .card {
+    @apply flex flex-col gap-2 rounded-[var(--radius-card)] border border-line bg-surface p-3 shadow-[0_1px_2px_rgba(0,0,0,.04)];
+  }
+  .chip {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold leading-4;
+  }
+  .avatar {
+    @apply inline-flex shrink-0 items-center justify-center rounded-full font-semibold text-white;
+  }
+}

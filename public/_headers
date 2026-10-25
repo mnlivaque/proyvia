@@ -1,0 +1,16 @@
+# Cabeceras de seguridad servidas por Cloudflare Pages (punto 6: seguridad).
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://apis.google.com https://accounts.google.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.googleusercontent.com https://*.gstatic.com https://drive-thirdparty.googleusercontent.com https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://www.googleapis.com https://accounts.google.com https://challenges.cloudflare.com; frame-src https://docs.google.com https://accounts.google.com https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+
+# Los assets llevan hash en el nombre: se pueden cachear para siempre (punto 8: caché).
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# El HTML no se cachea, para que cada despliegue llegue de inmediato.
+/index.html
+  Cache-Control: no-cache

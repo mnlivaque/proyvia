@@ -1,0 +1,6 @@
+# Finales de línea uniformes (LF) en el repositorio, en cualquier sistema.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary
