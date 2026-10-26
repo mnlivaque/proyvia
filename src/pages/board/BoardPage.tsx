@@ -6,6 +6,9 @@ import { useAuth } from '@/auth/AuthProvider'
 import { useCards, useLabels, useLists, useMembers, useProfileMap, useProject, useRealtimeProject } from '@/data/hooks'
 import type { CardRow } from '@/data/types'
 import { daysOverdue } from '@/lib/dates'
+import { matchesStatus, norm, STATUS_OPTIONS, type StatusFilter } from '@/lib/status'
+import { useSignedUrls } from '@/lib/images'
+import { StatusChips } from '@/components/ui/StatusChips'
 import { PageSpinner } from '@/components/ui/PageSpinner'
 import { Avatar } from '@/components/ui/Avatar'
 import { ListColumn, CardPreview } from './ListColumn'
@@ -18,9 +21,11 @@ export interface BoardFilters {
   people: Set<string>
   unassigned: boolean
   labelId: string | null
-  overdueOnly: boolean
+  status: StatusFilter
   text: string
 }
+
+const EMPTY_FILTERS: BoardFilters = { people: new Set(), unassigned: false, labelId: null, status: 'all', text: '' }
 
 export default function BoardPage() {
   const { projectId, cardId } = useParams()
@@ -37,7 +42,7 @@ export default function BoardPage() {
   const moveCard = useMoveCard(projectId!)
   const createList = useCreateList(projectId!)
 
-  const [filters, setFilters] = useState<BoardFilters>({ people: new Set(), unassigned: false, labelId: null, overdueOnly: false, text: '' })
+  const [filters, setFilters] = useState<BoardFilters>(EMPTY_FILTERS)
   const [dragging, setDragging] = useState<CardRow | null>(null)
   const [deliverablePrompt, setDeliverablePrompt] = useState<{ cardId: string; listId: string } | null>(null)
   const [addingList, setAddingList] = useState(false)
@@ -48,19 +53,56 @@ export default function BoardPage() {
 
   const memberProfiles = useMemo(() => (members ?? []).map((m) => people.get(m.user_id)).filter((p): p is NonNullable<typeof p> => !!p && p.approved), [members, people])
 
-  const filtered = useMemo(() => {
-    const t = filters.text.trim().toLowerCase()
+  // 1) texto + etiqueta  2) + persona  3) + estado. Cada paso alimenta un contador distinto.
+  const base = useMemo(() => {
+    const words = norm(filters.text.trim()).split(/\s+/).filter(Boolean)
     return (cards ?? []).filter((c) => {
-      if (filters.people.size > 0 && !c.card_assignees.some((a) => filters.people.has(a.user_id))) return false
-      if (filters.unassigned && c.card_assignees.length > 0) return false
       if (filters.labelId && !c.card_labels.some((l) => l.label_id === filters.labelId)) return false
-      if (filters.overdueOnly && !(daysOverdue(c.due_date, c.completed_at) > 0)) return false
-      if (t && !c.title.toLowerCase().includes(t) && !c.description.toLowerCase().includes(t)) return false
+      if (words.length) {
+        // Busca en título, descripción, etiquetas y nombres de los responsables; todas las palabras deben aparecer.
+        const hay = norm(
+          [
+            c.title,
+            c.description,
+            ...c.card_labels.map((l) => labels?.find((x) => x.id === l.label_id)?.name ?? ''),
+            ...c.card_assignees.map((a) => people.get(a.user_id)?.full_name ?? ''),
+          ].join(' '),
+        )
+        if (!words.every((w) => hay.includes(w))) return false
+      }
       return true
     })
-  }, [cards, filters])
+  }, [cards, filters.labelId, filters.text, labels, people])
 
-  const activeFilter = filters.people.size > 0 || filters.unassigned || !!filters.labelId || filters.overdueOnly || !!filters.text
+  const byPerson = useMemo(
+    () =>
+      base.filter((c) => {
+        if (filters.people.size > 0 && !c.card_assignees.some((a) => filters.people.has(a.user_id))) return false
+        if (filters.unassigned && c.card_assignees.length > 0) return false
+        return true
+      }),
+    [base, filters.people, filters.unassigned],
+  )
+
+  const filtered = useMemo(() => byPerson.filter((c) => matchesStatus(c, filters.status)), [byPerson, filters.status])
+
+  const statusCounts = useMemo(() => {
+    const out: Record<string, number> = {}
+    for (const o of STATUS_OPTIONS) out[o.value] = byPerson.filter((c) => matchesStatus(c, o.value)).length
+    for (const l of lists ?? []) out[`list:${l.id}`] = byPerson.filter((c) => c.list_id === l.id).length
+    return out
+  }, [byPerson, lists])
+
+  // La barra de personas cuenta según el estado elegido (p. ej. cuántas vencidas tiene cada una).
+  const forSidebar = useMemo(() => base.filter((c) => matchesStatus(c, filters.status)), [base, filters.status])
+
+  const { data: covers } = useSignedUrls((cards ?? []).map((c) => c.cover_path))
+
+  const visibleLists = filters.status.startsWith('list:') ? (lists ?? []).filter((l) => `list:${l.id}` === filters.status) : lists ?? []
+  const statusLabel =
+    STATUS_OPTIONS.find((o) => o.value === filters.status)?.label ?? (lists ?? []).find((l) => `list:${l.id}` === filters.status)?.name ?? ''
+
+  const activeFilter = filters.people.size > 0 || filters.unassigned || !!filters.labelId || filters.status !== 'all' || !!filters.text
   const overdueCount = (cards ?? []).filter((c) => daysOverdue(c.due_date, c.completed_at) > 0).length
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
@@ -116,15 +158,20 @@ export default function BoardPage() {
                 </span>
               )
             })}
-            <label className="flex items-center gap-2 rounded-lg border border-line bg-surface px-2.5 py-1.5">
-              <Search className="size-3.5 text-muted" aria-hidden="true" />
+            <label className="flex items-center gap-2 rounded-lg border border-line-2 bg-surface px-2.5 py-1.5 focus-within:border-accent focus-within:ring-2 focus-within:ring-accent-soft">
+              <Search className="size-4 text-muted" aria-hidden="true" />
               <input
                 value={filters.text}
                 onChange={(e) => setFilters((f) => ({ ...f, text: e.target.value }))}
-                placeholder="Buscar tarea…"
-                aria-label="Buscar tarea"
-                className="w-36 bg-transparent text-[13px] outline-none placeholder:text-muted"
+                placeholder="Buscar en este tablero: palabra, código, etiqueta, persona…"
+                aria-label="Buscar en este tablero"
+                className="w-64 bg-transparent text-[13px] outline-none placeholder:text-muted"
               />
+              {filters.text && (
+                <button type="button" aria-label="Borrar búsqueda" onClick={() => setFilters((f) => ({ ...f, text: '' }))} className="text-muted hover:text-ink">
+                  <X className="size-3.5" aria-hidden="true" />
+                </button>
+              )}
             </label>
             <select
               aria-label="Filtrar por etiqueta"
@@ -139,27 +186,33 @@ export default function BoardPage() {
                 </option>
               ))}
             </select>
-            <button
-              type="button"
-              aria-pressed={filters.overdueOnly}
-              onClick={() => setFilters((f) => ({ ...f, overdueOnly: !f.overdueOnly }))}
-              className={`rounded-lg border px-2.5 py-1.5 text-[13px] ${filters.overdueOnly ? 'border-danger bg-danger-soft font-semibold text-danger-ink' : 'border-line bg-surface text-ink-2'}`}
-            >
-              Vencidas
-            </button>
             {activeFilter && (
-              <button type="button" className="btn-ghost px-2" onClick={() => setFilters({ people: new Set(), unassigned: false, labelId: null, overdueOnly: false, text: '' })}>
-                <X className="size-3.5" aria-hidden="true" /> Limpiar
+              <button type="button" className="btn-ghost px-2" onClick={() => setFilters(EMPTY_FILTERS)}>
+                <X className="size-3.5" aria-hidden="true" /> Limpiar filtros
               </button>
             )}
           </div>
         </div>
 
+        <StatusChips value={filters.status} onChange={(status) => setFilters((f) => ({ ...f, status }))} counts={statusCounts} lists={lists ?? []} />
+
+        {activeFilter && (
+          <p className="-mt-1.5 text-[13px] text-ink-3" role="status">
+            Mostrando <strong className="text-ink">{filtered.length}</strong> de {cards?.length ?? 0} tareas
+            {filters.people.size > 0 && <> de <strong className="text-ink">{[...filters.people].map((id) => people.get(id)?.full_name).filter(Boolean).join(', ')}</strong></>}
+            {filters.unassigned && <> <strong className="text-ink">sin asignar</strong></>}
+            {filters.status !== 'all' && <> · estado <strong className="text-ink">{statusLabel}</strong></>}
+            {filters.text && <> · que contienen “<strong className="text-ink">{filters.text}</strong>”</>}
+            {filtered.length === 0 && <> · prueba quitar algún filtro</>}
+          </p>
+        )}
+
         {/* Columnas */}
         <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={onDragStart} onDragEnd={onDragEnd}>
           <div className="flex min-h-0 flex-1 items-start gap-3.5 overflow-x-auto pb-2">
-            {(lists ?? []).map((list) => (
+            {visibleLists.map((list) => (
               <ListColumn
+                covers={covers}
                 key={list.id}
                 list={list}
                 projectId={project.id}
@@ -201,13 +254,16 @@ export default function BoardPage() {
                 </button>
               ))}
           </div>
-          <DragOverlay dropAnimation={null}>{dragging ? <CardPreview card={dragging} labels={labels ?? []} people={people} /> : null}</DragOverlay>
+          <DragOverlay dropAnimation={null}>
+            {dragging ? <CardPreview card={dragging} labels={labels ?? []} people={people} coverUrl={dragging.cover_path ? covers?.get(dragging.cover_path) : undefined} /> : null}
+          </DragOverlay>
         </DndContext>
       </main>
 
       <PeopleSidebar
         people={memberProfiles}
-        cards={cards ?? []}
+        cards={forSidebar}
+        statusLabel={filters.status === 'all' ? 'tareas' : statusLabel.toLowerCase()}
         selected={filters.people}
         unassigned={filters.unassigned}
         onToggle={togglePerson}

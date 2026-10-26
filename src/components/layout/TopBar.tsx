@@ -6,6 +6,7 @@ import { Logo } from '@/components/ui/Logo'
 import { Avatar } from '@/components/ui/Avatar'
 import { useMarkNotificationsRead, useMyProjects, useNotifications } from '@/data/hooks'
 import { relativeTime } from '@/lib/dates'
+import { GlobalSearch } from './GlobalSearch'
 
 export function TopBar() {
   const { profile, isAdmin, signOut } = useAuth()
@@ -36,7 +37,8 @@ export function TopBar() {
         )}
       </nav>
 
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-2">
+        <GlobalSearch />
         <NotificationsMenu />
         {profile && <UserMenu profile={profile} onSignOut={signOut} isAdmin={isAdmin} />}
       </div>

@@ -56,7 +56,7 @@ export function useCreateCard(projectId: string) {
 export function useUpdateCard(projectId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ cardId, patch }: { cardId: string; patch: Partial<Pick<CardRow, 'title' | 'description' | 'priority' | 'list_id' | 'completed_at'>> }) =>
+    mutationFn: async ({ cardId, patch }: { cardId: string; patch: Partial<Pick<CardRow, 'title' | 'description' | 'priority' | 'list_id' | 'completed_at' | 'stickers' | 'cover_path'>> }) =>
       must(await supabase.from('cards').update(patch).eq('id', cardId).select('id').single()),
     onSuccess: (_d, { cardId }) => {
       qc.invalidateQueries({ queryKey: keys.cards(projectId) })

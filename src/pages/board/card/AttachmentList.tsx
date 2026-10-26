@@ -11,13 +11,13 @@ import { chooseFromDrive, useAddAttachments, useAddLink, useRemoveAttachment } f
 interface Props {
   projectId: string
   cardId: string
-  kind: AttachmentKind
+  kind: Exclude<AttachmentKind, 'image'>
   items: Attachment[]
   project: Project
   canEdit: boolean
 }
 
-const COPY: Record<AttachmentKind, { title: string; hint: string; empty: string; add: string }> = {
+const COPY: Record<Exclude<AttachmentKind, 'image'>, { title: string; hint: string; empty: string; add: string }> = {
   reference: { title: 'Documentos de referencia', hint: 'dónde están los insumos', empty: 'Aún no hay documentos de referencia.', add: 'Elegir en Drive' },
   deliverable: { title: 'Entregable', hint: 'dónde dejaste el resultado · se pide al pasar a "Terminado"', empty: 'Todavía no hay entregable.', add: 'Añadir entregable de Drive' },
 }

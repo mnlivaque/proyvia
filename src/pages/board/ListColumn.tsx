@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
-import { AlertTriangle, Calendar, CheckSquare, Clock, MoreHorizontal, Plus } from 'lucide-react'
+import { AlertTriangle, Calendar, CheckSquare, Clock, Image as ImageIcon, MoreHorizontal, Plus } from 'lucide-react'
+import { stickerName } from '@/lib/stickers'
 import type { List, Label, Profile } from '@/types/database'
 import type { CardRow } from '@/data/types'
 import { compareByDueDate, daysOverdue, isDueSoon, shortDate } from '@/lib/dates'
@@ -19,10 +20,11 @@ interface Props {
   people: Map<string, Profile>
   members: Profile[]
   canEdit: boolean
+  covers: Map<string, string> | undefined
   onOpenCard: (id: string) => void
 }
 
-export function ListColumn({ list, projectId, cards, totalInList, labels, people, canEdit, onOpenCard }: Props) {
+export function ListColumn({ list, projectId, cards, totalInList, labels, people, canEdit, covers, onOpenCard }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: list.id })
   const [adding, setAdding] = useState(false)
   const [title, setTitle] = useState('')
@@ -101,7 +103,7 @@ export function ListColumn({ list, projectId, cards, totalInList, labels, people
 
       <div className="flex min-h-[40px] flex-col gap-2">
         {sorted.map((c) => (
-          <DraggableCard key={c.id} card={c} labels={labels} people={people} canDrag={canEdit} onOpen={() => onOpenCard(c.id)} />
+          <DraggableCard key={c.id} card={c} labels={labels} people={people} canDrag={canEdit} coverUrl={c.cover_path ? covers?.get(c.cover_path) : undefined} onOpen={() => onOpenCard(c.id)} />
         ))}
       </div>
 
@@ -150,7 +152,7 @@ export function ListColumn({ list, projectId, cards, totalInList, labels, people
   )
 }
 
-function DraggableCard({ card, labels, people, canDrag, onOpen }: { card: CardRow; labels: Label[]; people: Map<string, Profile>; canDrag: boolean; onOpen: () => void }) {
+function DraggableCard({ card, labels, people, canDrag, coverUrl, onOpen }: { card: CardRow; labels: Label[]; people: Map<string, Profile>; canDrag: boolean; coverUrl?: string; onOpen: () => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id, disabled: !canDrag })
   return (
     <div
@@ -164,12 +166,12 @@ function DraggableCard({ card, labels, people, canDrag, onOpen }: { card: CardRo
       onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onOpen()}
       className="cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
-      <CardPreview card={card} labels={labels} people={people} />
+      <CardPreview card={card} labels={labels} people={people} coverUrl={coverUrl} />
     </div>
   )
 }
 
-export function CardPreview({ card, labels, people }: { card: CardRow; labels: Label[]; people: Map<string, Profile> }) {
+export function CardPreview({ card, labels, people, coverUrl }: { card: CardRow; labels: Label[]; people: Map<string, Profile>; coverUrl?: string }) {
   const overdue = daysOverdue(card.due_date, card.completed_at)
   const soon = isDueSoon(card.due_date, card.completed_at)
   const myLabels = card.card_labels.map((l) => labels.find((x) => x.id === l.label_id)).filter(Boolean) as Label[]
@@ -177,6 +179,20 @@ export function CardPreview({ card, labels, people }: { card: CardRow; labels: L
 
   return (
     <article className={`card ${overdue > 0 ? 'border-2 border-danger shadow-[0_0_0_3px_#FEE2E2]' : ''} ${card.completed_at ? 'opacity-80' : ''}`}>
+      {card.cover_path && (
+        <div className="-mx-3 -mt-3 mb-0.5 h-32 overflow-hidden rounded-t-[9px] bg-ground">
+          {coverUrl && <img src={coverUrl} alt="" className="size-full object-cover" loading="lazy" draggable={false} />}
+        </div>
+      )}
+      {(card.stickers ?? []).length > 0 && (
+        <div className="flex flex-wrap gap-0.5 text-[20px] leading-none" aria-label={`Stickers: ${card.stickers.map(stickerName).join(', ')}`}>
+          {card.stickers.map((s) => (
+            <span key={s} title={stickerName(s)} aria-hidden="true">
+              {s}
+            </span>
+          ))}
+        </div>
+      )}
       {overdue > 0 && (
         <div className="-mx-1 -mt-1 flex items-center gap-1.5 rounded-md bg-danger px-2 py-1 text-xs font-bold text-white">
           <AlertTriangle className="size-3.5" aria-hidden="true" /> VENCIDA · hace {overdue} {overdue === 1 ? 'día' : 'días'}
@@ -206,6 +222,11 @@ export function CardPreview({ card, labels, people }: { card: CardRow; labels: L
         {(card.attachments_count ?? 0) > 0 && (
           <span className="inline-flex items-center gap-1" title={`${card.attachments_count} adjuntos`}>
             <DriveIcon className="size-3.5" /> {card.attachments_count}
+          </span>
+        )}
+        {(card.images_count ?? 0) > 0 && (
+          <span className="inline-flex items-center gap-1" title={`${card.images_count} imágenes`}>
+            <ImageIcon className="size-3.5" aria-hidden="true" /> {card.images_count}
           </span>
         )}
         {(card.checklist_total ?? 0) > 0 && (

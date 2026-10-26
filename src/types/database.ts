@@ -7,8 +7,8 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type UserRole = 'admin' | 'member'
 export type MemberRole = 'owner' | 'editor' | 'viewer'
 export type Priority = 'baja' | 'media' | 'alta' | 'urgente'
-export type AttachmentKind = 'reference' | 'deliverable'
-export type AttachmentSource = 'drive' | 'url'
+export type AttachmentKind = 'reference' | 'deliverable' | 'image'
+export type AttachmentSource = 'drive' | 'url' | 'storage'
 
 export interface Profile {
   id: string
@@ -103,6 +103,8 @@ export interface Card {
   due_date: string | null
   priority: Priority
   completed_at: string | null
+  stickers: string[]
+  cover_path: string | null
   created_by: string | null
   created_at: string
   updated_at: string
@@ -151,6 +153,7 @@ export interface Attachment {
   url: string
   name: string
   drive_file_id: string | null
+  storage_path: string | null
   mime_type: string | null
   icon_url: string | null
   added_by: string | null

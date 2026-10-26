@@ -6,6 +6,7 @@ export interface CardRow extends Card {
   card_labels: { label_id: string }[]
   attachments_count?: number
   deliverable_count?: number
+  images_count?: number
   checklist_total?: number
   checklist_done?: number
 }

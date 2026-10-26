@@ -5,7 +5,9 @@ import { Avatar } from '@/components/ui/Avatar'
 
 interface Props {
   people: Profile[]
+  /** Tareas ya filtradas por estado, texto y etiqueta: los números siguen lo que se está viendo. */
   cards: CardRow[]
+  statusLabel: string
   selected: Set<string>
   unassigned: boolean
   onToggle: (id: string, multi: boolean) => void
@@ -14,8 +16,8 @@ interface Props {
 }
 
 /** Barra derecha "Tareas por persona": un clic muestra solo las tareas de esa persona. */
-export function PeopleSidebar({ people, cards, selected, unassigned, onToggle, onAll, onUnassigned }: Props) {
-  const pending = cards.filter((c) => !c.completed_at)
+export function PeopleSidebar({ people, cards, statusLabel, selected, unassigned, onToggle, onAll, onUnassigned }: Props) {
+  const pending = cards
   const countFor = (id: string) => pending.filter((c) => c.card_assignees.some((a) => a.user_id === id)).length
   const noOne = pending.filter((c) => c.card_assignees.length === 0).length
   const sorted = [...people].sort((a, b) => countFor(b.id) - countFor(a.id) || a.full_name.localeCompare(b.full_name))
@@ -24,7 +26,7 @@ export function PeopleSidebar({ people, cards, selected, unassigned, onToggle, o
     <aside className="hidden w-[236px] shrink-0 flex-col gap-1.5 border-l border-line bg-surface px-3 py-3.5 lg:flex" aria-label="Tareas por persona">
       <div className="flex flex-col gap-0.5 px-1 pb-2">
         <h2 className="text-sm font-bold">Tareas por persona</h2>
-        <span className="text-xs text-muted">Toca un nombre para ver sus pendientes</span>
+        <span className="text-xs text-muted">Toca un nombre para ver sus tareas. El número cuenta: {statusLabel}.</span>
       </div>
 
       <PersonButton active={selected.size === 0 && !unassigned} onClick={onAll} count={pending.length} icon={<span className="avatar size-8 bg-line text-ink-2"><Users className="size-4" aria-hidden="true" /></span>}>

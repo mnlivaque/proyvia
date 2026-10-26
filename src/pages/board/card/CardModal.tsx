@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Archive, Calendar, Check, Copy, Tag, Users, X } from 'lucide-react'
+import { Archive, Calendar, Check, Copy, ImagePlus, Smile, Tag, Users, X } from 'lucide-react'
+import { MAX_STICKERS, STICKERS, stickerName } from '@/lib/stickers'
+import { CardImages } from './CardImages'
 import { useAuth } from '@/auth/AuthProvider'
 import { useLabels, useLists, useMembers, useProfileMap } from '@/data/hooks'
 import { Avatar } from '@/components/ui/Avatar'
@@ -45,7 +47,7 @@ export function CardModal({ projectId, cardId, project, canEdit, onClose }: Prop
   const [desc, setDesc] = useState('')
   const [dateModal, setDateModal] = useState(false)
   const [deliverablePrompt, setDeliverablePrompt] = useState<string | null>(null)
-  const [picker, setPicker] = useState<'people' | 'labels' | 'move' | null>(null)
+  const [picker, setPicker] = useState<'people' | 'labels' | 'move' | 'stickers' | null>(null)
   const pickerRef = useClickOutside<HTMLDivElement>(() => setPicker(null))
 
   useEffect(() => {
@@ -78,6 +80,12 @@ export function CardModal({ projectId, cardId, project, canEdit, onClose }: Prop
   const myLabels = card.card_labels.map((l) => (labels ?? []).find((x) => x.id === l.label_id)).filter(Boolean) as NonNullable<ReturnType<NonNullable<typeof labels>['find']>>[]
   const refs = card.attachments.filter((a) => a.kind === 'reference')
   const dels = card.attachments.filter((a) => a.kind === 'deliverable')
+  const images = card.attachments.filter((a) => a.kind === 'image')
+  const stickers = card.stickers ?? []
+  const toggleSticker = (s: string) => {
+    const next = stickers.includes(s) ? stickers.filter((x) => x !== s) : [...stickers, s].slice(0, MAX_STICKERS)
+    update.mutate({ cardId, patch: { stickers: next } })
+  }
   const doneList = (lists ?? []).find((l) => l.is_done)
   const prio = PRIORITY_STYLE[card.priority]
 
@@ -115,6 +123,23 @@ export function CardModal({ projectId, cardId, project, canEdit, onClose }: Prop
               <h1 id="card-title" className={`text-[22px] font-bold leading-tight ${canEdit ? 'cursor-text rounded hover:bg-ground' : ''}`} onClick={() => canEdit && setEditingTitle(true)}>
                 {card.title}
               </h1>
+            )}
+            {stickers.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1" aria-label="Stickers">
+                {stickers.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    disabled={!canEdit}
+                    onClick={() => toggleSticker(s)}
+                    title={canEdit ? `${stickerName(s)} · clic para quitar` : stickerName(s)}
+                    aria-label={canEdit ? `Quitar sticker ${stickerName(s)}` : stickerName(s)}
+                    className="rounded-lg px-1 text-[28px] leading-none transition-transform hover:scale-110 disabled:hover:scale-100"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             )}
             <div className="flex flex-wrap items-center gap-1.5">
               {myLabels.map((l) => (
@@ -217,6 +242,7 @@ export function CardModal({ projectId, cardId, project, canEdit, onClose }: Prop
               )}
             </section>
 
+            <CardImages projectId={projectId} cardId={cardId} images={images} coverPath={card.cover_path} canEdit={canEdit} />
             <AttachmentList projectId={projectId} cardId={cardId} kind="reference" items={refs} project={project} canEdit={canEdit} />
             <AttachmentList projectId={projectId} cardId={cardId} kind="deliverable" items={dels} project={project} canEdit={canEdit} />
             <Checklist projectId={projectId} cardId={cardId} items={card.checklist_items} canEdit={canEdit} />
@@ -230,6 +256,13 @@ export function CardModal({ projectId, cardId, project, canEdit, onClose }: Prop
               <SideBtn icon={<Users />} onClick={() => setPicker('people')}>Responsables</SideBtn>
               <SideBtn icon={<Tag />} onClick={() => setPicker('labels')}>Etiquetas</SideBtn>
               <SideBtn icon={<Calendar />} onClick={() => setDateModal(true)}>Fecha límite</SideBtn>
+              <SideBtn icon={<Smile />} onClick={() => setPicker('stickers')}>Stickers</SideBtn>
+              <SideBtn
+                icon={<ImagePlus />}
+                onClick={() => document.querySelector<HTMLInputElement>('input[type=file][accept^="image/"]')?.click()}
+              >
+                Imagen
+              </SideBtn>
               <h3 className="px-0.5 pb-1 pt-3 text-xs font-bold uppercase tracking-wide text-muted">Acciones</h3>
               <SideBtn icon={<Archive className="rotate-90" />} onClick={() => setPicker('move')}>Mover a…</SideBtn>
               <SideBtn
@@ -290,6 +323,30 @@ export function CardModal({ projectId, cardId, project, canEdit, onClose }: Prop
                     )
                   })}
                   {(labels ?? []).length === 0 && <p className="px-2 text-xs text-muted">No hay etiquetas. El administrador las crea en Administración › Etiquetas.</p>}
+                </Popover>
+              )}
+              {picker === 'stickers' && (
+                <Popover title={`Stickers (${stickers.length}/${MAX_STICKERS})`}>
+                  <div className="grid grid-cols-6 gap-1 p-1">
+                    {STICKERS.map(({ s, name }) => {
+                      const on = stickers.includes(s)
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          title={name}
+                          aria-label={name}
+                          aria-pressed={on}
+                          disabled={!on && stickers.length >= MAX_STICKERS}
+                          onClick={() => toggleSticker(s)}
+                          className={`flex aspect-square items-center justify-center rounded-lg text-[22px] transition-transform hover:scale-110 disabled:opacity-30 ${on ? 'bg-accent-soft ring-2 ring-accent' : 'hover:bg-ground'}`}
+                        >
+                          {s}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <p className="px-2 pt-1 text-[11px] text-muted">Clic para poner o quitar. Se ven en la tarjeta del tablero.</p>
                 </Popover>
               )}
               {picker === 'move' && (

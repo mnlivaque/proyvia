@@ -8,6 +8,9 @@ import type { CardRow } from '@/data/types'
 import { Avatar } from '@/components/ui/Avatar'
 import { DriveIcon } from '@/components/ui/DriveIcon'
 import { compareByDueDate, daysOverdue, isDueSoon, longDate, shortDate } from '@/lib/dates'
+import { matchesStatus, norm, STATUS_OPTIONS, type StatusFilter } from '@/lib/status'
+import { StatusChips } from '@/components/ui/StatusChips'
+import { Search, X } from 'lucide-react'
 import type { List, Project } from '@/types/database'
 
 export default function MyTasksPage() {
@@ -19,12 +22,22 @@ export default function MyTasksPage() {
   const target = profiles?.find((p) => p.id === targetId) ?? profile!
   const { data: cards, isLoading } = useCardsOfUser(targetId)
   const { data: projects } = useProjects()
-  const [hideDone, setHideDone] = useState(true)
+  const [status, setStatus] = useState<StatusFilter>('pending')
+  const [text, setText] = useState('')
   const [showAll, setShowAll] = useState(false)
 
-  const visible = useMemo(() => (cards ?? []).filter((c) => !hideDone || !c.completed_at).sort(compareByDueDate), [cards, hideDone])
-  const overdue = visible.filter((c) => daysOverdue(c.due_date, c.completed_at) > 0).length
-  const soon = visible.filter((c) => isDueSoon(c.due_date, c.completed_at)).length
+  const searched = useMemo(() => {
+    const words = norm(text.trim()).split(/\s+/).filter(Boolean)
+    if (!words.length) return cards ?? []
+    return (cards ?? []).filter((c) => {
+      const hay = norm(`${c.title} ${c.description} ${(projects ?? []).find((p) => p.id === c.project_id)?.name ?? ''}`)
+      return words.every((w) => hay.includes(w))
+    })
+  }, [cards, text, projects])
+  const visible = useMemo(() => searched.filter((c) => matchesStatus(c, status)).sort(compareByDueDate), [searched, status])
+  const counts = useMemo(() => Object.fromEntries(STATUS_OPTIONS.map((o) => [o.value, searched.filter((c) => matchesStatus(c, o.value)).length])), [searched])
+  const overdue = (cards ?? []).filter((c) => daysOverdue(c.due_date, c.completed_at) > 0).length
+  const soon = (cards ?? []).filter((c) => isDueSoon(c.due_date, c.completed_at)).length
   const pending = (cards ?? []).filter((c) => !c.completed_at).length
   const doneMonth = (cards ?? []).filter((c) => c.completed_at && c.completed_at.slice(0, 7) === new Date().toISOString().slice(0, 7)).length
 
@@ -40,8 +53,14 @@ export default function MyTasksPage() {
             Todo lo asignado en {projects?.length ?? 0} proyectos. Elige otra persona abajo para ver sus pendientes. Hoy es {longDate(new Date().toISOString().slice(0, 10)).toLowerCase()}.
           </p>
         </div>
-        <label className="ml-auto flex items-center gap-2 text-[13px] text-ink-2">
-          <input type="checkbox" className="accent-accent" checked={hideDone} onChange={(e) => setHideDone(e.target.checked)} /> Ocultar terminadas
+        <label className="ml-auto flex w-full items-center gap-2 rounded-lg border border-line-2 bg-surface px-2.5 py-1.5 focus-within:border-accent focus-within:ring-2 focus-within:ring-accent-soft sm:w-72">
+          <Search className="size-4 text-muted" aria-hidden="true" />
+          <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Buscar en estas tareas…" aria-label="Buscar en estas tareas" className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted" />
+          {text && (
+            <button type="button" aria-label="Borrar búsqueda" onClick={() => setText('')} className="text-muted hover:text-ink">
+              <X className="size-3.5" aria-hidden="true" />
+            </button>
+          )}
         </label>
       </div>
 
@@ -77,8 +96,14 @@ export default function MyTasksPage() {
         <Kpi value={doneMonth} label="Terminadas este mes" color="text-accent" />
       </div>
 
+      <StatusChips value={status} onChange={setStatus} counts={counts} />
+
       {isLoading && <p className="text-sm text-muted">Cargando…</p>}
-      {!isLoading && visible.length === 0 && <div className="panel p-8 text-center text-sm text-muted">{hideDone ? 'No hay tareas pendientes. ¡Buen trabajo!' : 'No hay tareas asignadas.'}</div>}
+      {!isLoading && visible.length === 0 && (
+        <div className="panel p-8 text-center text-sm text-muted">
+          {status === 'pending' && !text ? 'No hay tareas pendientes. ¡Buen trabajo!' : 'No hay tareas con estos filtros.'}
+        </div>
+      )}
 
       {(projects ?? [])
         .filter((p) => visible.some((c) => c.project_id === p.id))

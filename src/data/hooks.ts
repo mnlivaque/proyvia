@@ -123,12 +123,15 @@ export const CARD_SELECT =
 type RawCard = CardRow & { attachments: { kind: string; deleted_at: string | null }[]; checklist_items: { done: boolean }[] }
 
 export function normalizeCard(c: RawCard): CardRow {
-  const atts = (c.attachments ?? []).filter((a) => !a.deleted_at)
+  const all = (c.attachments ?? []).filter((a) => !a.deleted_at)
+  const atts = all.filter((a) => a.kind !== 'image')
   const { attachments: _a, checklist_items: _c, ...rest } = c
   return {
     ...rest,
+    stickers: rest.stickers ?? [],
     attachments_count: atts.length,
     deliverable_count: atts.filter((a) => a.kind === 'deliverable').length,
+    images_count: all.length - atts.length,
     checklist_total: (c.checklist_items ?? []).length,
     checklist_done: (c.checklist_items ?? []).filter((i) => i.done).length,
   }
